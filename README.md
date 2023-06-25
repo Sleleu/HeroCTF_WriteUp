@@ -8,7 +8,13 @@ Premier writeup de mes débuts dans le monde du CTF, lors du HeroCTF se déroula
 
 # Sommaire
 - [Crypto](#crypto)
+  - [Hyper Loop](#hyper-loop)
 - [Web](#web)
+  - [1 - Best schools](#1---best-schools)
+  - [2 - Referrrrer](#2---referrrrer)
+  - [3 - Drink from my Flask#1 (Non résolu)](#3---drink-from-my-flask1-non-résolu)
+- [Misc](#misc)
+  - [Pyjail](#pyjail)
   
 # Crypto
 
@@ -346,5 +352,89 @@ ETag: W/"26-Cj1P1GdO8Vke/DfJFC3B2cH95nw"
 
 Hero{ba7b97ae00a760b44cc8c761e6d4535b}
 ```
+
+## 3 - Drink from my Flask#1 (Non résolu)
+
+Sur ce challenge, on nous explique qu’il s’agit d’un serveur web créé à partir du framework flask de python (j’y connais R), on tombe directement sur ce site :
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/e7c137a2-e038-438f-b497-ffe3a2233e47"/>
+</p>
+
+Et en naviguant un peu au pif sur des routes, on apprend que deux routes semblent accessibles :
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/af53187d-6179-4efa-b5a6-adfcdb4d0945"/>
+</p>
+
+Et lorsqu’on passe sur adminPage, on se fait bien entendu recaler :
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/7e4fab29-8628-486e-8532-36bbc53f85d8"/>
+</p>
+
+Pendant que je place la requête sur le repeater de burpsuite, je vois ce cookie : 
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/3f72c786-bab7-44cd-8663-cf352440f320"/>
+</p>
+
+Voyons ce que ça donne sur le debugger de jwt.io :
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/7c5765cc-5410-4c25-b1b2-f9e72ea424da"/>
+</p>
+
+Et si on essayait de crack le token et de se placer en admin pour accéder à cette page ? J’utilise l’outil JwtTool pour ça et je tente un bruteforce de base avec le dictionnaire rockyou.txt afin d’éventuellement trouver le secret du token :
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/37237f5c-a1ce-4381-aa5c-9eab44f4cb6b"/>
+</p>
+
+Le secret était “key”…
+
+J’encode un nouveau token avec le rôle admin, et le secret pour accéder en tant qu’admin à la page :
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/aa9548d7-c8e6-403a-8d06-d84dd0f1c1d5"/>
+</p>
+
+J’envoie à nouveau une requête pour accéder à adminPage sous le rôle d’admin et :
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/6e91a823-1ff4-4dcc-ae70-97cb6a357b99"/>
+</p>
+
+Sérieusement ? Juste un Welcome admin ?
+
+Évidemment c’était bien trop facile et je n’ai pas vu passer la moindre notion de flask donc cherchons plutôt du côté des variables, testons une division par 0 pour voir comment le serveur se comporte :
+
+<p align="center">
+<img src="https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/8f4ddd29-586d-4595-8aef-d597f1f12f92"/>
+</p>
+
+Petite erreur 500 c’est marrant mais ça a l’air de ne servir à rien dans ce contexte. En cherchant un peu côté payload flask j’ai enfin pu obtenir une réponse intéressante en testant un payload de Server-Side Template Injection:
+
+![Capture d’écran du 2023-05-15 18-11-22](https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/0df101ac-8caa-49a7-af2f-3186dcf0b62b)
+
+On peut réussir à obtenir certaines données à partir de l’appel à **{{config}}** , malheureusement le flag ne se trouve pas directement dans la variable SECRET_KEY.
+
+J’ai pu en déduire que ça tournait sur Jinja2 avec ces tests, ainsi qu’avec d’autres données obtenues avec quelques tentatives
+
+![Capture d’écran du 2023-06-25 22-04-43](https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/c0cc94ea-e0e6-414e-a1dc-546b2b7206db)
+
+J’ai essayé de développer mon payload à partir de ce que j’ai vu sur certains writeups ainsi que sur Hacktricks, mais on tombe vite sur une size limit de payload :
+
+![Capture d’écran du 2023-05-15 18-18-48](https://github.com/Sleleu/HeroCTF_WriteUp/assets/93100775/45ba17be-92ad-41bc-922e-b2513aedab23)
+
+Comment bypass cette limite ?
+
+C’est là que je me suis arrêté, manque de temps et de connaissances j’ai pas pu aller plus loin sur ce challenge malheureusement, d’après les writeup d’autres personnes du CTF : https://siunam321.github.io/ctf/HeroCTF-v5/Web/Drink-from-my-Flask-1/, on pouvait bypass cette limite en injectant le code pour obtenir une RCE directement dans le token.
+
+# Misc
+
+## Pyjail
+
+Jamais fait de pyjail, au vu du challenge on peut se connecter en remote tcp avec netcat :
 
 
